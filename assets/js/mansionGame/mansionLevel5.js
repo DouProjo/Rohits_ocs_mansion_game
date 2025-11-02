@@ -68,12 +68,34 @@ class Arrow {
     }
 
     collidesWith(other) {
-        return (
-            this.position.x < other.position.x + other.width &&
-            this.position.x + this.width > other.position.x &&
-            this.position.y < other.position.y + other.height &&
-            this.position.y + this.height > other.position.y
+        // Make hitbox more generous for testing
+        const margin = 20; // pixels of extra space around hitbox
+        const hit = (
+            (this.position.x - margin) < (other.position.x + other.width + margin) &&
+            (this.position.x + this.width + margin) > (other.position.x - margin) &&
+            (this.position.y - margin) < (other.position.y + other.height + margin) &&
+            (this.position.y + this.height + margin) > (other.position.y - margin)
         );
+        
+        if (hit) {
+            console.log('Arrow hit:', {
+                arrow: {
+                    x: this.position.x,
+                    y: this.position.y,
+                    w: this.width,
+                    h: this.height
+                },
+                target: {
+                    id: other.id,
+                    x: other.position.x,
+                    y: other.position.y,
+                    w: other.width,
+                    h: other.height
+                }
+            });
+        }
+        
+        return hit;
     }
 
     destroy() {
@@ -83,23 +105,63 @@ class Arrow {
 
     draw(ctx) {
         if (!ctx) return;
+        
+        // Draw debug info
+        ctx.save();
+        ctx.fillStyle = 'red';
+        ctx.font = '12px Arial';
+        ctx.fillText(`Arrow: ${this.direction} (${Math.round(this.position.x)},${Math.round(this.position.y)})`, 10, 20);
+        
+        ctx.translate(this.position.x, this.position.y);
+        
+        // Rotate based on direction
+        let angle = 0;
+        switch (this.direction) {
+            case 'up': angle = -Math.PI/2; break;
+            case 'down': angle = Math.PI/2; break;
+            case 'left': angle = Math.PI; break;
+            case 'upLeft': angle = -3*Math.PI/4; break;
+            case 'upRight': angle = -Math.PI/4; break;
+            case 'downLeft': angle = 3*Math.PI/4; break;
+            case 'downRight': angle = Math.PI/4; break;
+        }
+        ctx.rotate(angle);
+        
+        // Try to draw the image
         if (!this.img) {
             this.img = new window.Image();
             this.img.src = this.src;
+            console.log('Loading arrow image from:', this.src);
         }
-        ctx.save();
-        ctx.translate(this.position.x, this.position.y);
-        // Rotate arrow based on direction
-        switch (this.direction) {
-            case 'up': ctx.rotate(-Math.PI / 2); break;
-            case 'down': ctx.rotate(Math.PI / 2); break;
-            case 'left': ctx.scale(-1, 1); break;
-            case 'upLeft': ctx.rotate(-Math.PI / 4); break;
-            case 'upRight': ctx.rotate(-Math.PI / 4); ctx.scale(-1, 1); break;
-            case 'downLeft': ctx.rotate(Math.PI / 4); break;
-            case 'downRight': ctx.rotate(Math.PI / 4); ctx.scale(-1, 1); break;
+        
+        // Draw a visible arrow shape as fallback
+        if (!this.img.complete) {
+            // Arrow shaft
+            ctx.fillStyle = 'yellow';
+            ctx.fillRect(-this.width/2, -2, this.width, 4);
+            
+            // Arrow head
+            ctx.beginPath();
+            ctx.moveTo(this.width/2, -8);
+            ctx.lineTo(this.width/2 + 16, 0);
+            ctx.lineTo(this.width/2, 8);
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            // Center the image
+            ctx.drawImage(
+                this.img, 
+                -this.width/2, 
+                -this.height/2, 
+                this.width, 
+                this.height
+            );
         }
-        ctx.drawImage(this.img, 0, 0, this.width, this.height);
+        
+        // Draw hitbox for debugging
+        ctx.strokeStyle = 'red';
+        ctx.strokeRect(-this.width/2, -this.height/2, this.width, this.height);
+        
         ctx.restore();
     }
 }
