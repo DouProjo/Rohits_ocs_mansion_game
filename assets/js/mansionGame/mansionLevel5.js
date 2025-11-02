@@ -197,33 +197,77 @@ class PlayerWithArrows extends originalPlayerClass {
     }
 
     shootArrow() {
+        console.log('shootArrow called', { 
+            direction: this.direction,
+            position: this.position,
+            gameEnv: !!this.gameEnv
+        });
+
         // Use direction from player
         const dir = this.direction || 'right';
         const arrowData = { ...sprite_data_arrow, direction: dir };
 
-        // spawn in front of player (center)
-        arrowData.INIT_POSITION = {
-            x: this.position.x + this.width / 2,
-            y: this.position.y + this.height / 2
-        };
+        // Offset spawn position based on direction
+        const offset = 50; // pixels in front of player
+        switch(dir) {
+            case 'left':
+                arrowData.INIT_POSITION = {
+                    x: this.position.x - offset,
+                    y: this.position.y + this.height/2
+                };
+                break;
+            case 'right':
+                arrowData.INIT_POSITION = {
+                    x: this.position.x + this.width + offset,
+                    y: this.position.y + this.height/2
+                };
+                break;
+            case 'up':
+                arrowData.INIT_POSITION = {
+                    x: this.position.x + this.width/2,
+                    y: this.position.y - offset
+                };
+                break;
+            case 'down':
+                arrowData.INIT_POSITION = {
+                    x: this.position.x + this.width/2,
+                    y: this.position.y + this.height + offset
+                };
+                break;
+            default:
+                arrowData.INIT_POSITION = {
+                    x: this.position.x + this.width/2,
+                    y: this.position.y + this.height/2
+                };
+        }
 
-        // Ensure arrow uses the same base path as the game so images resolve correctly
-        if (this.gameEnv && this.gameEnv.path) {
-            // prefer /image/mansionGame folder (your assets) but keep existing filename
-            try {
-                const parsed = new URL(arrowData.src, window.location.origin);
-                // replace only the path portion to use gameEnv.path
-                const filename = parsed.pathname.split('/').pop();
-                arrowData.src = this.gameEnv.path + '/image/mansionGame/' + filename;
-            } catch (e) {
-                // fallback — just set from gameEnv.path
-                arrowData.src = this.gameEnv.path + '/image/mansionGame/arrows.png';
+        // Ensure Arrow class is registered
+        if (this.gameEnv && this.gameEnv.classes) {
+            let hasArrow = false;
+            for (const entry of this.gameEnv.classes) {
+                if (entry.class && entry.class.name === 'Arrow') {
+                    hasArrow = true;
+                    break;
+                }
+            }
+            if (!hasArrow) {
+                console.log('Registering Arrow class');
+                this.gameEnv.classes.push({ class: Arrow, data: sprite_data_arrow });
             }
         }
 
-        // debug: log arrow spawn so we can verify it's being created
-        if (typeof console !== 'undefined' && console.debug) console.debug('Spawning Arrow', arrowData);
-        this.gameEnv.addGameObject('Arrow', arrowData);
+        // Set image path using gameEnv.path
+        if (this.gameEnv && this.gameEnv.path) {
+            arrowData.src = this.gameEnv.path + '/images/mansionGame/arrow.png';
+            console.log('Arrow sprite path:', arrowData.src);
+        }
+
+        console.log('Creating arrow:', arrowData);
+        const arrow = this.gameEnv.addGameObject('Arrow', arrowData);
+        
+        if (!arrow) {
+            console.error('Failed to create arrow');
+        }
     }
 }
 
