@@ -107,7 +107,8 @@ class Arrow {
 // --- sprite_data_arrow NEXT ---
 const sprite_data_arrow = {
     id: 'Arrow',
-    src: '/images/mansionGame/arrows.png',
+    // default src; will be overridden with gameEnv.path when an arrow is spawned
+    src: '/image/mansionGame/arrows.png',
     SCALE_FACTOR: 2,
     ANIMATION_RATE: 1,
     pixels: {width: 128, height: 32},
@@ -120,10 +121,15 @@ const sprite_data_arrow = {
 // --- PlayerWithArrows class NEXT ---
 const originalPlayerClass = Player;
 class PlayerWithArrows extends originalPlayerClass {
-    handleKeyDown({ keyCode }) {
-        super.handleKeyDown({ keyCode });
-        // 'E' key (69) to shoot arrow
-        if (keyCode === 69 && this.gameEnv) {
+    handleKeyDown(event) {
+        // Forward event to parent so movement/other handling still works
+        super.handleKeyDown(event);
+
+        // Support modern `event.key` and legacy `event.keyCode`/`which`.
+        const keyCode = event && (event.keyCode || event.which);
+        const key = event && event.key;
+
+        if ((key === 'e' || key === 'E' || keyCode === 69) && this.gameEnv) {
             this.shootArrow();
         }
     }
@@ -132,10 +138,29 @@ class PlayerWithArrows extends originalPlayerClass {
         // Use direction from player
         const dir = this.direction || 'right';
         const arrowData = { ...sprite_data_arrow, direction: dir };
+
+        // spawn in front of player (center)
         arrowData.INIT_POSITION = {
             x: this.position.x + this.width / 2,
             y: this.position.y + this.height / 2
         };
+
+        // Ensure arrow uses the same base path as the game so images resolve correctly
+        if (this.gameEnv && this.gameEnv.path) {
+            // prefer /image/mansionGame folder (your assets) but keep existing filename
+            try {
+                const parsed = new URL(arrowData.src, window.location.origin);
+                // replace only the path portion to use gameEnv.path
+                const filename = parsed.pathname.split('/').pop();
+                arrowData.src = this.gameEnv.path + '/image/mansionGame/' + filename;
+            } catch (e) {
+                // fallback — just set from gameEnv.path
+                arrowData.src = this.gameEnv.path + '/image/mansionGame/arrows.png';
+            }
+        }
+
+        // debug: log arrow spawn so we can verify it's being created
+        if (typeof console !== 'undefined' && console.debug) console.debug('Spawning Arrow', arrowData);
         this.gameEnv.addGameObject('Arrow', arrowData);
     }
 }
